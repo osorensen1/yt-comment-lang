@@ -3,11 +3,6 @@ import os
 import googleapiclient.discovery
 import argparse
 from dotenv import load_dotenv
-#create gitignore
-#unit testing?
-#add developer key to environment
-#extract langs from langdetect
-#handle errors
 
 def make_results(response, lang_count):
     results = ""
@@ -30,7 +25,7 @@ def main():
     load_dotenv()
     api_service_name = "youtube"
     api_version = "v3"
-    DEVELOPER_KEY = os.getenv("DEVELOPER_KEY")
+    DEVELOPER_KEY = os.getenv("YOUTUBE_DEVELOPER_KEY")
 
     youtube = googleapiclient.discovery.build(
         api_service_name, api_version, developerKey = DEVELOPER_KEY)
