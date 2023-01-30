@@ -16,7 +16,7 @@ LANGS_FULL = {"af":"Afrikaans", "ar":"Arabic", "bg":"Bulgarian", "bn":"Bengali",
     "ne":"Nepali", "nl":"Dutch", "no":"Norwegian", "pa":"Punjabi", "pl":"Polish", "pt":"Portuguese",
     "ro":"Romanian", "ru":"Russian", "sk":"Slovak", "sl":"Slovenian", "so":"Somali", "sq":"Albanian",
     "sv":"Swedish", "sw":"Swahili", "ta":"Tamil", "te":"Telugu", "th":"Thai", "tl":"Tagalog", "tr":"Turkish",
-    "uk":"Ukrainian", "ur":"Urdu", "vi":"Vietnamese", "zh-cn":"Chinese (PRC)", "zh-tw":"Chinese (Taiwan)"}
+    "uk":"Ukrainian", "ur":"Urdu", "vi":"Vietnamese", "zh-cn":"Chinese (PRC)", "zh-tw":"Chinese (Taiwan)", "unidentified":"unidentified"}
 
 def make_results(response, lang_count):
     results = ""
@@ -36,33 +36,37 @@ def get_comments(url):
     youtube = googleapiclient.discovery.build(
         api_service_name, api_version, developerKey = DEVELOPER_KEY)
 
-    request = youtube.comments().list(
+    request = youtube.commentThreads().list(
         part="snippet",
-        parentId=url
+        videoId=url
     )
     
     return request.execute() 
 
-def detect_langs(comments):
+def detect_langs(response):
     lang_count = {}
 
     for lang in LANGS:
         lang_count[lang] = 0
 
     unidentified = 0
-    for comment in comments["items"]:
-        try:
-            lang = ld.detect(comment["snippet"]["textDisplay"])
-            lang_count[lang] += 1    
-        except ld.LangDetectException:
-            unidentified += 1
-            pass
-
+    for thread in response["items"]:
+        lang_count[detect_wrapper(thread["topLevelComment"]["snippet"]["textDisplay"])] += 1
+        for reply in thread["replies"]["comments"]["snippet"]["textDisplay"]:
+            lang_count[detect_wrapper(reply)] += 1
     return lang_count
+
+def detect_wrapper(text):
+        try:
+            lang = ld.detect(text)
+            return lang
+        except ld.LangDetectException:
+            return "unidentified"
+            pass
 
 def parse_args(args):
     parser = argparse.ArgumentParser(description = "Analyze language use in the comments of a YouTube video")
-    parser.add_argument("parentId", help = "URL or Id of the video")
+    parser.add_argument("videoId", help = "URL or Id of the video")
     parser.add_argument("-o", "--output", help = "Direct output to file")
     return parser.parse_args(args)
 
@@ -72,12 +76,10 @@ def main():
     args = parse_args(sys.argv[1:])
 
     #connect to YouTube API
-    comments = get_comments(args.parentId)
-    if comments is None:
-        print("Something went wrong")
-        return
+    response = get_comments(args.videoId)
+    print(response)
     
-    lang_count = detect_langs(comments)
+    lang_count = detect_langs(response)
 
     #output results
     results = make_results(response, lang_count)
